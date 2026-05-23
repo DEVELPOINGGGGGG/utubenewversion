@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ultimate YT Downloader</title>
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- SweetAlert2 for Toast Notifications -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <!-- Canvas Confetti for celebrations -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    
+    <style>
+        /* Animated Gradient Background */
+        body {
+            background: linear-gradient(-45deg, #ee7752, #e73c7e, #23a6d5, #23d5ab);
+            background-size: 400% 400%;
+            animation: gradientBG 15s ease infinite;
+            transition: background 0.5s;
+        }
+        @keyframes gradientBG {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        /* Glassmorphism Panel */
+        .glass {
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+        }
+        /* Dark Mode overrides */
+        body.dark-mode {
+            background: linear-gradient(-45deg, #1a2a6c, #b21f1f, #fdbb2d);
+            background-size: 400% 400%;
+            animation: gradientBG 15s ease infinite;
+        }
+        body.dark-mode .glass {
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: white;
+        }
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4 font-sans text-gray-800">
+
+    <div class="glass w-full max-w-2xl rounded-3xl p-8 relative overflow-hidden transition-all duration-500">
+        
+        <!-- Theme Toggle -->
+        <button onclick="toggleTheme()" class="absolute top-4 right-4 bg-white/20 hover:bg-white/40 p-2 rounded-full backdrop-blur-md transition">
+            <i class="fas fa-moon text-xl" id="theme-icon"></i>
+        </button>
+
+        <h1 class="text-4xl font-extrabold text-center mb-2 drop-shadow-md text-white">
+            <i class="fab fa-youtube text-red-500"></i> NexGen Downloader
+        </h1>
+        <p class="text-center text-white/80 mb-8 font-medium">Bypass blocks. Download instantly.</p>
+
+        <!-- Input Section -->
+        <div class="flex flex-col sm:flex-row gap-3 mb-6">
+            <button onclick="pasteFromClipboard()" class="bg-blue-500/80 hover:bg-blue-600 text-white px-4 py-3 rounded-xl shadow-lg transition">
+                <i class="fas fa-paste"></i>
+            </button>
+            <input type="text" id="url-input" placeholder="Paste YouTube Link Here..." class="flex-1 px-5 py-3 rounded-xl bg-white/50 backdrop-blur-sm border-2 border-transparent focus:border-white focus:outline-none focus:bg-white/80 transition shadow-inner placeholder-gray-500">
+            <button onclick="fetchMetadata()" class="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-bold px-6 py-3 rounded-xl shadow-lg transform hover:scale-105 transition">
+                <i class="fas fa-search mr-2"></i> Fetch
+            </button>
+        </div>
+
+        <!-- Video Details Section (Hidden initially) -->
+        <div id="video-details" class="hidden animate-[fadeIn_0.5s_ease-out] bg-white/20 rounded-2xl p-4 mb-6 shadow-md border border-white/30 text-white">
+            <div class="flex flex-col sm:flex-row gap-4 items-center">
+                <img id="thumb-preview" src="" alt="Thumbnail" class="w-full sm:w-48 rounded-lg shadow-md object-cover aspect-video">
+                <div class="flex-1 text-center sm:text-left">
+                    <h2 id="video-title" class="text-xl font-bold line-clamp-2 mb-1">Video Title Here</h2>
+                    <p id="video-author" class="text-sm opacity-80 mb-4"><i class="fas fa-user-circle"></i> Author Name</p>
+                    
+                    <div class="flex flex-wrap gap-2 justify-center sm:justify-start">
+                        <button onclick="startDownload(false)" class="bg-red-500 hover:bg-red-600 px-4 py-2 rounded-lg font-bold shadow-lg flex items-center transition">
+                            <i class="fas fa-video mr-2"></i> MP4 Video
+                        </button>
+                        <button onclick="startDownload(true)" class="bg-blue-500 hover:bg-blue-600 px-4 py-2 rounded-lg font-bold shadow-lg flex items-center transition">
+                            <i class="fas fa-music mr-2"></i> MP3 Audio
+                        </button>
+                        <button onclick="resetUI()" class="bg-gray-500/50 hover:bg-gray-600/50 px-3 py-2 rounded-lg font-bold shadow-lg transition">
+                            <i class="fas fa-redo"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Progress Bar Section (Hidden initially) -->
+        <div id="progress-container" class="hidden mt-6 bg-white/30 p-4 rounded-xl border border-white/20 shadow-inner">
+            <div class="flex justify-between text-white font-bold text-sm mb-2">
+                <span id="status-text"><i class="fas fa-spinner fa-spin"></i> Downloading...</span>
+                <span id="percentage-text">0%</span>
+            </div>
+            <div class="w-full bg-black/20 rounded-full h-4 overflow-hidden shadow-inner">
+                <div id="progress-bar" class="bg-gradient-to-r from-green-400 to-blue-500 h-4 rounded-full" style="width: 0%; transition: width 0.2s;"></div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        const Toast = Swal.mixin({
+            toast: true,
+            position: 'top-end',
+            showConfirmButton: false,
+            timer: 3000,
+            timerProgressBar: true,
+        });
+
+        // Feature 8: Dark/Light Mode
+        function toggleTheme() {
+            document.body.classList.toggle('dark-mode');
+            const icon = document.getElementById('theme-icon');
+            if (document.body.classList.contains('dark-mode')) {
+                icon.classList.replace('fa-moon', 'fa-sun');
+            } else {
+                icon.classList.replace('fa-sun', 'fa-moon');
+            }
+        }
+
+        // Feature 9: Auto-Paste
+        async function pasteFromClipboard() {
+            try {
+                const text = await navigator.clipboard.readText();
+                document.getElementById('url-input').value = text;
+                Toast.fire({ icon: 'success', title: 'Pasted from clipboard' });
+            } catch (err) {
+                Toast.fire({ icon: 'error', title: 'Failed to read clipboard' });
+            }
+        }
+
+        // Feature 13: Reset UI
+        function resetUI() {
+            document.getElementById('url-input').value = '';
+            document.getElementById('video-details').classList.add('hidden');
+            document.getElementById('progress-container').classList.add('hidden');
+            document.getElementById('progress-bar').style.width = '0%';
+        }
+
+        // Feature 3 & 4: Fetch Metadata
+        async function fetchMetadata() {
+            const url = document.getElementById('url-input').value;
+            if (!url.includes('youtu')) {
+                return Toast.fire({ icon: 'error', title: 'Please enter a valid YouTube link' });
+            }
+
+            Toast.fire({ icon: 'info', title: 'Fetching details...' });
+            
+            try {
+                // Call our Render Python backend to get the details
+                const res = await fetch('/api/metadata', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url: url })
+                });
+                
+                const data = await res.json();
+                
+                if (data.error) throw new Error(data.error);
+
+                document.getElementById('video-title').innerText = data.title;
+                document.getElementById('video-author').innerText = data.author_name;
+                document.getElementById('thumb-preview').src = data.thumbnail_url;
+                
+                document.getElementById('video-details').classList.remove('hidden');
+                document.getElementById('progress-container').classList.add('hidden');
+                Toast.fire({ icon: 'success', title: 'Video found!' });
+
+            } catch (error) {
+                Toast.fire({ icon: 'error', title: error.message });
+            }
+        }
+
+        // Feature 1, 2, 5 & 10: Download via Cobalt with Real Progress Bar
+        async function startDownload(isAudio) {
+            const ytUrl = document.getElementById('url-input').value;
+            const progressContainer = document.getElementById('progress-container');
+            const progressBar = document.getElementById('progress-bar');
+            const percentText = document.getElementById('percentage-text');
+            const statusText = document.getElementById('status-text');
+
+            progressContainer.classList.remove('hidden');
+            statusText.innerHTML = '<i class="fas fa-cogs fa-spin"></i> Contacting Cobalt API...';
+            progressBar.style.width = '5%';
+            percentText.innerText = 'Wait';
+
+            try {
+                // Ask Cobalt API for the direct download link
+                const cobaltReq = await fetch('https://api.cobalt.tools/', {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        url: ytUrl,
+                        isAudioOnly: isAudio
+                    })
+                });
+
+                const cobaltData = await cobaltReq.json();
+                
+                if (cobaltData.status === 'error') throw new Error('Cobalt Error');
+                if (!cobaltData.url) throw new Error('Failed to extract direct link');
+
+                const directUrl = cobaltData.url;
+                statusText.innerHTML = '<i class="fas fa-download"></i> Downloading File...';
+
+                // Real Progress Bar logic using Fetch API Streams
+                const response = await fetch(directUrl);
+                const contentLength = response.headers.get('content-length');
+                
+                if (!contentLength) {
+                    // Fallback if file size is hidden
+                    statusText.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Downloading (size unknown)...';
+                    const blob = await response.blob();
+                    triggerDownload(blob, isAudio);
+                    return;
+                }
+
+                const total = parseInt(contentLength, 10);
+                let loaded = 0;
+                
+                const reader = response.body.getReader();
+                const stream = new ReadableStream({
+                    async start(controller) {
+                        while (true) {
+                            const { done, value } = await reader.read();
+                            if (done) break;
+                            loaded += value.byteLength;
+                            
+                            // Calculate percentage
+                            const percent = Math.round((loaded / total) * 100);
+                            progressBar.style.width = percent + '%';
+                            percentText.innerText = percent + '%';
+                            
+                            controller.enqueue(value);
+                        }
+                        controller.close();
+                    }
+                });
+
+                const streamResponse = new Response(stream);
+                const blob = await streamResponse.blob();
+                
+                triggerDownload(blob, isAudio);
+
+            } catch (error) {
+                statusText.innerText = 'Error occurred!';
+                progressBar.style.backgroundColor = 'red';
+                Toast.fire({ icon: 'error', title: 'Download failed. Try again.' });
+            }
+        }
+
+        // Helper to save the blob to the user's device
+        function triggerDownload(blob, isAudio) {
+            const title = document.getElementById('video-title').innerText.replace(/[^a-z0-9]/gi, '_');
+            const ext = isAudio ? 'mp3' : 'mp4';
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = url;
+            a.download = `${title}.${ext}`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            
+            document.getElementById('status-text').innerHTML = '<i class="fas fa-check-circle"></i> Download Complete!';
+            
+            // Feature 10: Confetti!
+            confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
+            Toast.fire({ icon: 'success', title: 'File saved successfully!' });
+        }
+    </script>
+</body>
+</html>
