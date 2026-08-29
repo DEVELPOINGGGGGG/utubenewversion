@@ -6,33 +6,6 @@ from flask import Flask, request, jsonify, render_template_string, send_file
 from pytubefix import YouTube
 
 # ==============================================================================
-# 1. GOOGLE DNS BYPASS ENGINE (Intercepts YouTube domain lookups)
-# ==============================================================================
-try:
-    import dns.resolver
-    _original_getaddrinfo = socket.getaddrinfo
-
-    def patched_getaddrinfo(host, port, family=0, type=0, proto=0, flags=0):
-        # Force Google / Cloudflare DNS for YouTube domains
-        if host and ("youtube.com" in host or "googlevideo.com" in host or "youtu.be" in host):
-            try:
-                res = dns.resolver.Resolver()
-                res.nameservers = ['8.8.8.8', '1.1.1.1']
-                answers = res.resolve(host, 'A')
-                ip_address = answers[0].to_text()
-                print(f"[DNS BYPASS] Resolved {host} -> {ip_address}", file=sys.stderr)
-                return [(socket.AF_INET, type, proto, '', (ip_address, port))]
-            except Exception as e:
-                print(f"[DNS BYPASS ERROR] Fallback for {host}: {e}", file=sys.stderr)
-                return _original_getaddrinfo(host, port, family, type, proto, flags)
-        return _original_getaddrinfo(host, port, family, type, proto, flags)
-
-    socket.getaddrinfo = patched_getaddrinfo
-    print("[INIT] Google DNS bypass active (8.8.8.8 / 1.1.1.1).", file=sys.stderr)
-except ImportError:
-    print("❌ Critical: 'dnspython' not installed. Running on default system DNS.", file=sys.stderr)
-
-# ==============================================================================
 # 2. FLASK SERVER & EMBEDDED DASHBOARD UI
 # ==============================================================================
 app = Flask(__name__)
